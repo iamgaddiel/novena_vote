@@ -8,6 +8,9 @@ export default defineConfig({
     react(),
     legacy()
   ],
+  server: {
+    host: true
+  },
   test: {
     globals: true,
     environment: 'jsdom',

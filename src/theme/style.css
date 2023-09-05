@@ -1,0 +1,13 @@
+:root{
+
+    /* --ion-toolbar-color: green; */
+    /* --ion-toolbar-segment-color	Color of the Segment Buttons in the Toolbar */
+    --ion-toolbar-segment-color: var(--ion-color-secondary);
+    /* --ion-toolbar-segment-color-checked	Color of the checked Segment Buttons in the Toolbar */
+    --ion-toolbar-segment-color-checked: var(--ion-color-warning);
+    /* --ion-toolbar-segment-background	Background of the Segment Buttons in the Toolbar */
+    /* --ion-toolbar-segment-background:  green; */
+    /* --ion-toolbar-segment-background-checked	Background of the Segment Buttons in the Toolbar */
+    /* --ion-toolbar-segment-background-checked: */
+    /* --ion-toolbar-segment-indicator-color  */
+}
