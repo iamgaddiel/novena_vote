@@ -1,7 +1,7 @@
 import { IonAvatar, IonContent, IonIcon, IonImg, IonItem, IonLabel, IonList, IonListHeader, IonPage, IonRefresher, IonRefresherContent, IonText, IonTitle, IonToast, RefresherEventDetail } from '@ionic/react'
 import React, { useEffect, useState } from 'react'
 
-import { statsChart, statsChartOutline } from 'ionicons/icons'
+import { cloudOfflineOutline, statsChart, statsChartOutline } from 'ionicons/icons'
 import CandidatesListItem from '../../components/CandidatesListItem/CandidatesListItem'
 import { listApiCollection } from '../../helpers/apiHelpers'
 import { CANDIDATES_COLLECTION } from '../../helpers/keys'
@@ -81,6 +81,7 @@ const Candidates = () => {
 
 
     } catch (e: any) {
+      setElectionCandidates(demoCandidates)
       setShowToast({
         enabled: true,
         message: "Error fetching details: Check network connection and try again!"
@@ -124,7 +125,7 @@ const Candidates = () => {
           </IonListHeader>
 
           {
-            electionCandidates.sort((a: any, b: any) => a - b).map((candidate, indx) => (
+            electionCandidates ? electionCandidates?.sort((a: any, b: any) => a - b)?.map((candidate, indx) => (
               <CandidatesListItem
                 candidateId={candidate.id.toString()}
                 name={candidate.name}
@@ -134,7 +135,13 @@ const Candidates = () => {
                 isLoading={isLoading}
                 isVerified={isVerifiedForVoting}
               />
-            ))
+            )) : (
+              <div className='ion-text-center my-5'>
+              <IonIcon icon={cloudOfflineOutline} size='large'/>
+              <h4>Could Not Get Candidates</h4>
+              <p className=''> Check your connection and try again </p>
+              </div>
+            )
           }
         </IonList>
       </IonContent>
