@@ -136,6 +136,7 @@ const Home = () => {
 
     // fetch user details remotely if user's details is not stored locally
     if (isNullish(storedUserDetails)) {
+    setIsLoading(false)
       setShowToast({
         enabled: true,
         message: "You're a new user, kindly register"
@@ -147,6 +148,8 @@ const Home = () => {
 
     // if user could not be authenticated
     if (!is_authenticated) {
+
+
       setShowToast({
         enabled: true,
         message: 'Error fetching user details: Check your internet connection and try again!'

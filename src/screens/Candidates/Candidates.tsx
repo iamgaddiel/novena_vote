@@ -36,27 +36,30 @@ const Candidates = () => {
 
 
   async function fetchUserDetails() {
+    setIsLoading(true)
     const user = await getStoredUser()
-
+    
     if (isNullish(user)) {
+      setIsLoading(false)
       setShowToast({
         enabled: true,
         message: "You're not a registered user"
       })
       return
     }
-
+    
     try {
       const trackingId = await getSaveData(USER_UUID) as string
       const { token, record } = await authenticate(user.record.email, trackingId)
-
+      
       // store authenticated user detail to storage
       saveData(USER, { token, record })
       getCandidates(user)
       setIsVerifiedForVoting(true)
     }
-
+    
     catch (error: any) {
+      setIsLoading(false)
       setShowToast({
         enabled: true,
         message: 'Error authenticating user'
@@ -64,6 +67,7 @@ const Candidates = () => {
       })
       // check if user is verified to vote
       if (user.record.can_vote !== true) {
+        setIsLoading(false)
         setShowToast({
           enabled: true,
           message: "Prohibited from voting: user not verified. Refresh Again."
@@ -72,14 +76,15 @@ const Candidates = () => {
       }
 
     }
-
+    
   }
-
-
+  
+  
   async function getCandidates(user: StoredUser) {
-    setIsLoading(true)
-
+    
+    
     if (typeof user === 'undefined') {
+      setIsLoading(false)
       setShowToast({
         enabled: true,
         message: "Error fetching user details: Check network connection and try again!"
@@ -94,9 +99,10 @@ const Candidates = () => {
       const candidatesItem = data as CandidateList
       setElectionCandidates(candidatesItem.items)
       setIsLoading(false)
-
-
+      
+      
     } catch (e: any) {
+      setIsLoading(false)
       setElectionCandidates(demoCandidates)
       setShowToast({
         enabled: true,
