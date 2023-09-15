@@ -1,73 +1,138 @@
-import { IonAvatar, IonContent, IonIcon, IonImg, IonItem, IonLabel, IonList, IonListHeader, IonPage, IonRefresher, IonRefresherContent, IonText, IonTitle, RefresherEventDetail } from '@ionic/react'
-import React from 'react'
+import { IonAvatar, IonContent, IonIcon, IonImg, IonItem, IonLabel, IonList, IonListHeader, IonPage, IonRefresher, IonRefresherContent, IonText, IonTitle, IonToast, RefresherEventDetail } from '@ionic/react'
+import React, { useEffect, useState } from 'react'
 
 import { statsChart, statsChartOutline } from 'ionicons/icons'
 import CandidatesListItem from '../../components/CandidatesListItem/CandidatesListItem'
+import { listApiCollection } from '../../helpers/apiHelpers'
+import { CANDIDATES_COLLECTION } from '../../helpers/keys'
+import { getStoredUser } from '../../helpers/authSDK'
+import { isNullish } from '../../helpers/utils'
+import { CandidateItem, CandidateList } from '../../@types/candidates'
+import { StoredUser } from '../../@types/users'
 
 
 
-const users = [
-  {
-    name: 'Gaddiel Ighota',
-    party: 'COMPSCI',
-    voteCount: 3000,
-    id: new Date().getMilliseconds()
-  },
-  {
-    name: 'Nicole James',
-    party: 'MECHENGR',
-    voteCount: 1000,
-    id: new Date().getMilliseconds()
-  },
-  {
-    name: 'Osaas Igurube',
-    party: 'MASSCOM',
-    voteCount: 3000,
-    id: new Date().getMilliseconds()
-  },
-  {
-    name: 'Peter Robinson',
-    party: 'STATS',
-    voteCount: 4500,
-    id: new Date().getMilliseconds()
-  },
-]
+
+
 
 
 
 
 const Candidates = () => {
+  const [showToast, setShowToast] = useState({
+    enabled: false,
+    message: ''
+  })
+  const [electionCandidates, setElectionCandidates] = useState<CandidateItem[]>(demoCandidates)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isVerifiedForVoting, setIsVerifiedForVoting] = useState(false)
+
+
+
+  useEffect(() => {
+    fetchUserDetails()
+  }, [])
+
+
+  async function fetchUserDetails() {
+    const user = await getStoredUser()
+
+    if (isNullish(user)) {
+      setShowToast({
+        enabled: true,
+        message: "You're not a registered user"
+      })
+      return
+    }
+
+    // check if user is verified to vote
+    if (user.record.can_vote !== true) {
+      setShowToast({
+        enabled: true,
+        message: "Prohibited from voting: user not verified. Refresh Again."
+      })
+      return
+    }
+
+    // set user is verified for voting
+    getCandidates(user)
+    setIsVerifiedForVoting(true)
+  }
+
+
+  async function getCandidates(user: StoredUser) {
+    setIsLoading(true)
+
+    if (typeof user === 'undefined') {
+      setShowToast({
+        enabled: true,
+        message: "Error fetching user details: Check network connection and try again!"
+      })
+      return
+    }
+
+    try {
+
+      const params = { expand: 'party' }
+      const { data } = await listApiCollection(CANDIDATES_COLLECTION, user?.token!, params)
+      const candidatesItem = data as CandidateList
+      setElectionCandidates(candidatesItem.items)
+      setIsLoading(false)
+
+
+    } catch (e: any) {
+      setShowToast({
+        enabled: true,
+        message: "Error fetching details: Check network connection and try again!"
+      })
+      return
+    }
+  }
+
+
 
   function handleRefresh(event: CustomEvent<RefresherEventDetail>) {
     setTimeout(() => {
       // Any calls to load data go here
+      fetchUserDetails()
 
       // fetchCandidatesDetails()
       event.detail.complete();
     }, 2000);
   }
 
-  
+
   return (
     <IonPage>
       <IonContent className='ion-padding'>
-      <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+        <IonToast
+          isOpen={showToast.enabled}
+          message={showToast.message}
+          onDidDismiss={(current) => setShowToast({ enabled: false, message: '' })}
+          position='top'
+          color={'warning'}
+          duration={4000}
+        />
+
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
           <IonRefresherContent></IonRefresherContent>
         </IonRefresher>
-        
+
         <IonList lines='full' className='mt-3'>
           <IonListHeader>
             <span>Candidates</span>
           </IonListHeader>
 
           {
-            users.sort((a: any, b: any) => a - b).map(candidate => (
+            electionCandidates.sort((a: any, b: any) => a - b).map((candidate, indx) => (
               <CandidatesListItem
                 candidateId={candidate.id.toString()}
                 name={candidate.name}
                 party={candidate.party}
-                voteCount={candidate.voteCount}
-                key={candidate.id}
+                voteCount={candidate.vote_count}
+                key={indx}
+                isLoading={isLoading}
+                isVerified={isVerifiedForVoting}
               />
             ))
           }
@@ -78,3 +143,45 @@ const Candidates = () => {
 }
 
 export default Candidates
+
+
+
+const demoCandidates: CandidateItem[] = [
+  {
+    collectionId: 'sksielsi',
+    collectionName: CANDIDATES_COLLECTION,
+    created: new Date().getTime().toString(),
+    updated: new Date().getTime().toString(),
+    name: 'Atiku',
+    party: 'PDP',
+    logo: '',
+    vote_count: 12,
+    id: new Date().getMilliseconds().toString(),
+    description: 'new new new',
+  },
+  {
+    collectionId: 'sksielsi',
+    collectionName: CANDIDATES_COLLECTION,
+    created: new Date().getTime().toString(),
+    updated: new Date().getTime().toString(),
+    name: 'Peter Obi',
+    party: 'LABOR',
+    logo: '',
+    vote_count: 124,
+    id: new Date().getTime().toString(),
+    description: 'new new new',
+  },
+  {
+    collectionId: 'sksielsi',
+    collectionName: CANDIDATES_COLLECTION,
+    created: new Date().getTime().toString(),
+    updated: new Date().getTime().toString(),
+    name: 'Gaddil',
+    party: 'APC',
+    logo: '',
+    vote_count: 145,
+    id: new Date().getTime().toString(),
+    description: 'new new new',
+  },
+
+]

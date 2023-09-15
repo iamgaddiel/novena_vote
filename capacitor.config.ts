@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
+  appId: 'com.thisrupt.novena-evoting',
   appName: 'novena_vote',
   webDir: 'dist',
   server: {

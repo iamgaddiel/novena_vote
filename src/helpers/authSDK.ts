@@ -35,7 +35,7 @@ export async function authenticate(email: string, password: string): Promise<Aut
         if (DEBUG)
             console.log("🚀 ~ file: authSDK.ts:44 ~ authenticate ~ responseObject:", responseObject)
 
-        // ! Faid Authentication Checks
+        // ! Failed Authentication Checks
         if (code === 400 && data?.identity) {
             const { message } = data?.identity // 3rd level data
             return { is_authenticated: false, message: `Identity: ${message}` }

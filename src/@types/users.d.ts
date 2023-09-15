@@ -15,7 +15,9 @@ export type UserRecord = {
     avatar: string
     voters_id: string
     tracking_Id: string
-    can_vote: boolean
+    can_vote: boolean,
+    candidate_voted: string,
+    has_voted: true
 }
 
 

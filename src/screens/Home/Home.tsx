@@ -1,5 +1,5 @@
-import { IonButton, IonCard, IonCardContent, IonChip, IonContent, IonHeader, IonIcon, IonInput, IonPage, IonProgressBar, IonRefresher, IonRefresherContent, IonTitle, IonToast, IonToolbar, RefresherEventDetail } from '@ionic/react'
-import { cogOutline, image, logIn, personOutline, refreshOutline, toggle } from 'ionicons/icons'
+import { IonButton, IonCard, IonCardContent, IonChip, IonContent, IonIcon, IonInput, IonPage, IonProgressBar, IonRefresher, IonRefresherContent, IonToast, RefresherEventDetail } from '@ionic/react'
+import { image, logIn, personOutline, toggle } from 'ionicons/icons'
 
 import './Home.css'
 import { useEffect, useReducer, useState } from 'react'
@@ -7,13 +7,13 @@ import { getSaveData, saveData } from '../../helpers/storageSDKs'
 import { isNullish } from '../../helpers/utils'
 
 import { v4 as uuid4 } from 'uuid'
-import { USER, USER_UUID, VOTER, VOTER_COLLECTION } from '../../helpers/keys'
+import { USER, USER_UUID } from '../../helpers/keys'
 import { StoredUser } from '../../@types/users'
-import { filterCollection } from '../../helpers/sdks'
-import { createApiCollection, listApiCollection } from '../../helpers/apiHelpers'
-import { authenticate, createUser, getStoredUser } from '../../helpers/authSDK'
+import { authenticate, getStoredUser } from '../../helpers/authSDK'
 import { _post } from '../../helpers/api'
 import Settings from '../../helpers/settings'
+
+
 
 
 
@@ -22,7 +22,6 @@ import Settings from '../../helpers/settings'
 const Home = () => {
   const [trackingId, setTrackingId] = useState('')
   const [user, setUser] = useState<StoredUser | null>(null)
-  const [votingStatus, setVotingStatus] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [showToast, setShowToast] = useState({
     enabled: false,
@@ -38,6 +37,8 @@ const Home = () => {
   const { pb } = Settings()
 
 
+
+
   useEffect(() => {
     getOrCreateUUID()
   }, [])
@@ -45,14 +46,14 @@ const Home = () => {
 
   useEffect(() => {
     getUserDetails()
-  }, [votingStatus])
+  }, [])
 
 
 
 
   function handleRefresh(event: CustomEvent<RefresherEventDetail>) {
     setTimeout(() => {
-      if (!isNullish(user)){
+      if (!isNullish(user)) {
         authenticateUser(user?.record.email!, trackingId)
       }
       event.detail.complete();
@@ -62,7 +63,6 @@ const Home = () => {
 
   async function handleCreateUser(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setIsLoading(true)
 
     const { name, email, voters_id } = formDetails!
 
@@ -74,6 +74,7 @@ const Home = () => {
       return
     }
 
+    setIsLoading(true)
 
     const formDetailsExtension = {
       ...formDetails,
@@ -81,56 +82,92 @@ const Home = () => {
       password: trackingId,
       passwordConfirm: trackingId
     }
+    console.log("🚀 ~ file: Home.tsx:78 ~ handleCreateUser ~ formDetailsExtension:", formDetailsExtension)
 
-    const url = `${pb.baseUrl}/collections/users/records`
-    const header = {
-      'Content-Type': 'application/json'
+    try{
+      const url = `${pb.baseUrl}/collections/users/records`
+      const header = { 'Content-Type': 'application/json' }
+      const authRes = await _post(url, formDetailsExtension, header)
+  
+      if (authRes.status !== 200) {
+        setShowToast({
+          enabled: true,
+          message: 'Error creating user'
+        })
+        return
+      }
+      authenticateUser(email, trackingId)
+      setIsLoading(false)
     }
-
-    const authRes = await _post(url, formDetailsExtension, header)
-
-    if (authRes.status !== 200) {
+    catch(error: any){
       setShowToast({
         enabled: true,
-        message: 'Error creating user'
+        message: 'Error creating user: Check your network connection and try again!'
       })
-      return
     }
-
-
-    authenticateUser(email, trackingId)
-    setIsLoading(false)
   }
 
 
   async function authenticateUser(email: string, password: string) {
-    const { token, record } = await authenticate(email, password)
-    // store authenticated user detail to storage
-    saveData(USER, { token, record })
-    setUser({ token: token!, record })
+    try {
+      const { token, record } = await authenticate(email, password)
+      // store authenticated user detail to storage
+      saveData(USER, { token, record })
+      setUser({ token: token!, record })
+    }
+    catch (error: any) {
+      setShowToast({
+        enabled: true,
+        message: 'Error authenticating user'
+
+      })
+      return
+    }
   }
 
 
   async function getUserDetails() {
     setIsLoading(true)
 
+    const userTrackingId = await getSaveData(USER_UUID) as string
+
     // fetch details locally
     const storedUserDetails = await getStoredUser() as StoredUser
-    if (!isNullish(storedUserDetails)) {
 
-      // update user details
-      authenticate(storedUserDetails.record.email, trackingId)
-      setUser(storedUserDetails)
-      setIsLoading(false)
+    // fetch user details remotely if user's details is not stored locally
+    if (isNullish(storedUserDetails)) {
+      setShowToast({
+        enabled: true,
+        message: "You're a new user, kindly register"
+      })
       return
     }
 
-    setIsLoading(false)
-    setShowToast({
-      enabled: true,
-      message: "You're a new user, kindly register"
-    })
+    const { is_authenticated, record, token } = await authenticate(storedUserDetails.record.email, userTrackingId)
 
+    // if user could not be authenticated
+    if (!is_authenticated) {
+      setShowToast({
+        enabled: true,
+        message: 'Error fetching user details: Check your internet connection and try again!'
+      })
+      return
+    }
+
+    setUser(storedUserDetails)
+    
+    
+    // check if user is verified to vote
+    if (record.can_vote !== true) {
+      setIsLoading(false)
+      setShowToast({
+        enabled: true,
+        message: "User not verified, can't vote"
+      })
+      return
+    }
+    
+    setIsLoading(false)
   }
 
 
@@ -153,11 +190,11 @@ const Home = () => {
 
       <IonContent className='ion-padding'>
         {
-          isLoading && <IonProgressBar type={'indeterminate'} color={'warning'} />
+          isLoading ? <IonProgressBar type={'indeterminate'} color={'warning'} /> : null
         }
 
         <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
-          <IonRefresherContent></IonRefresherContent>
+          <IonRefresherContent color={'danger'}></IonRefresherContent>
         </IonRefresher>
 
         <IonToast
@@ -173,22 +210,27 @@ const Home = () => {
         <section className='mt-4'>
           <IonCard className='p-4 d-flex align-items-center justify-content-center' style={{ height: '300px' }}>
             <IonCardContent>
-              <div className="d-flex align-items-center justify-content-evenly">
-
-
-                {/* setting */}
-                <IonIcon icon={image} size='large' color={'primary'} />
+              <div className="ion-text-center">
 
 
                 {/* Profile Image */}
-                <div className='bg-warning rounded-circle d-flex align-items-center justify-content-center mx-5' style={{ width: '100px', height: '100px' }}>
+                <div className='bg-warning rounded-circle d-flex align-items-center justify-content-center mx-auto' style={{ width: '100px', height: '100px' }}>
                   <big color={'dark'} className='text-dark h2'>
                     <IonIcon icon={personOutline} size='large' color='dark' />
                   </big>
                 </div>
 
+
+                {/* [Unique ID] ------------------------------------------------- */}
+                <div className='ion-text-center mt-3'>
+                  <h3 className='text-warning'>{trackingId}</h3>
+                  <IonChip className='mt-2'>Tracking ID</IonChip>
+                </div>
+
+
+
                 {/* can Vote */}
-                <div className='ion-text-center text-light'>
+                <div className='ion-text-center text-light mt-4'>
                   <p>Verified</p>
                   {
                     user !== null && user.record.can_vote ? <IonIcon icon={toggle} size='large' color={'success'} /> : <IonIcon icon={toggle} size='large' color={'danger'} />
@@ -199,11 +241,6 @@ const Home = () => {
           </IonCard>
         </section>
 
-        {/* [Unique ID] ------------------------------------------------- */}
-        <section className='ion-text-center mt-5'>
-          <h3 className='text-warning'>{trackingId}</h3>
-          <IonChip>Tracking ID</IonChip>
-        </section>
 
         {/* [Form] ------------------------------------------------- */}
         <section className='mt-5'>
@@ -283,8 +320,6 @@ const SET_NAME = 'SET_NAME'
 const SET_EMAIL = 'SET_EMAIL'
 const SET_VOTERS_ID = 'SET_VOTERS_ID'
 // const SET_NAME = 'SET_NAME'
-
-
 
 
 
