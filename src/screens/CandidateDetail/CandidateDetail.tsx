@@ -1,4 +1,4 @@
-import { IonAvatar, IonBackButton, IonButton, IonButtons, IonContent, IonFab, IonFabButton, IonFooter, IonHeader, IonIcon, IonImg, IonPage, IonSkeletonText, IonTitle, IonToast, IonToolbar } from '@ionic/react'
+import { IonAvatar, IonBackButton, IonButton, IonButtons, IonContent, IonFab, IonFabButton, IonFooter, IonHeader, IonIcon, IonImg, IonPage, IonProgressBar, IonSkeletonText, IonTitle, IonToast, IonToolbar } from '@ionic/react'
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
 
@@ -99,35 +99,37 @@ const CandidateDetail = () => {
 
 
     async function initiateFingerPrintVoting() {
+        setIsLoading(true)
         const options = {
             reason: 'Initialize voting',
             title: 'Initialize voting',
             subTitle: `You are about to vote for ${candidate.name}`,
             description: 'Note by confirming, you approve of this candidate',
         }
-
+        
         const isVerified = await NativeBiometric.verifyIdentity(options)
-            .then(async () => {
-
-                const {token: userAuthToken, record: userRecord} = await getStoredUser()
-
-                // increment candidate vote
+        .then(async () => {
+            
+            const { token: userAuthToken, record: userRecord } = await getStoredUser()
+            
+            // increment candidate vote
                 const { isUPdated, response: updateCandidateResponse } = await updateApiCollectionItem(
                     CANDIDATES_COLLECTION,
                     candidateId,
                     { vote_count: ++candidate.vote_count },
                     userAuthToken
-                )
-
-                if (!isUPdated) {
-                    setShowToast({
-                        enabled: true,
+                    )
+                    
+                    if (!isUPdated) {
+                        setIsLoading(false)
+                        setShowToast({
+                            enabled: true,
                         message: "Error with voting process",
                         type: 'danger'
                     })
                     return
                 }
-
+                
 
                 // update user's has_voted, candidate_voted property
                 const { isUPdated: userDetailUpdate, response } = await updateApiCollectionItem(
@@ -138,28 +140,31 @@ const CandidateDetail = () => {
                         candidate_voted: candidateId
                     },
                     userAuthToken
-                )
-
-                if (!userDetailUpdate) {
+                    )
+                    
+                    if (!userDetailUpdate) {
+                        setIsLoading(false)
+                        setShowToast({
+                            enabled: true,
+                            message: "Error: Could not updated user details",
+                            type: 'danger'
+                        })
+                        return
+                    }
+                    
+                    const newUserRecord: StoredUser = {
+                        token: user?.token!,
+                        record: response as UserRecord
+                    }
+                    
+                    saveData(USER, newUserRecord)
+                    setUser(newUserRecord)
+                    setIsLoading(false)
+                    
+                })
+                .catch(() => {
+                    setIsLoading(false)
                     setShowToast({
-                        enabled: true,
-                        message: "Error: Could not updated user details",
-                        type: 'danger'
-                    })
-                    return
-                }
-
-                const newUserRecord: StoredUser = {
-                    token: user?.token!,
-                    record: response as UserRecord
-                }
-
-                saveData(USER, newUserRecord)
-                setUser(newUserRecord)
-
-            })
-            .catch(() => {
-                setShowToast({
                     enabled: true,
                     message: "Failed to authenticated user"
                 })
@@ -189,6 +194,10 @@ const CandidateDetail = () => {
                             duration={4000}
                         />
                     )
+                }
+
+                {
+                    isLoading ? <IonProgressBar type={'indeterminate'} color={'warning'} /> : null
                 }
 
                 <IonFab horizontal='start' vertical='top'>
