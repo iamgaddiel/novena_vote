@@ -286,7 +286,7 @@ const Home = () => {
             </div>
 
             {
-              user === null && <IonButton className='mt-3 text-capitalize' expand='block' size='large' color={'warning'} type='submit'>
+              !isLoading && user === null && <IonButton className='mt-3 text-capitalize' expand='block' size='large' color={'warning'} type='submit'>
                 <IonIcon icon={logIn} slot='end' />
                 Submit
               </IonButton>

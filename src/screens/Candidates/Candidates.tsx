@@ -1,14 +1,15 @@
-import { IonAvatar, IonContent, IonIcon, IonImg, IonItem, IonLabel, IonList, IonListHeader, IonPage, IonRefresher, IonRefresherContent, IonText, IonTitle, IonToast, RefresherEventDetail } from '@ionic/react'
+import { IonAvatar, IonContent, IonIcon, IonImg, IonItem, IonLabel, IonList, IonListHeader, IonPage, IonProgressBar, IonRefresher, IonRefresherContent, IonText, IonTitle, IonToast, RefresherEventDetail } from '@ionic/react'
 import React, { useEffect, useState } from 'react'
 
 import { cloudOfflineOutline, statsChart, statsChartOutline } from 'ionicons/icons'
 import CandidatesListItem from '../../components/CandidatesListItem/CandidatesListItem'
 import { listApiCollection } from '../../helpers/apiHelpers'
-import { CANDIDATES_COLLECTION } from '../../helpers/keys'
-import { getStoredUser } from '../../helpers/authSDK'
+import { CANDIDATES_COLLECTION, USER, USER_UUID } from '../../helpers/keys'
+import { authenticate, getStoredUser } from '../../helpers/authSDK'
 import { isNullish } from '../../helpers/utils'
 import { CandidateItem, CandidateList } from '../../@types/candidates'
 import { StoredUser } from '../../@types/users'
+import { getSaveData, saveData } from '../../helpers/storageSDKs'
 
 
 
@@ -45,18 +46,33 @@ const Candidates = () => {
       return
     }
 
-    // check if user is verified to vote
-    if (user.record.can_vote !== true) {
-      setShowToast({
-        enabled: true,
-        message: "Prohibited from voting: user not verified. Refresh Again."
-      })
-      return
+    try {
+      const trackingId = await getSaveData(USER_UUID) as string
+      const { token, record } = await authenticate(user.record.email, trackingId)
+
+      // store authenticated user detail to storage
+      saveData(USER, { token, record })
+      getCandidates(user)
+      setIsVerifiedForVoting(true)
     }
 
-    // set user is verified for voting
-    getCandidates(user)
-    setIsVerifiedForVoting(true)
+    catch (error: any) {
+      setShowToast({
+        enabled: true,
+        message: 'Error authenticating user'
+
+      })
+      // check if user is verified to vote
+      if (user.record.can_vote !== true) {
+        setShowToast({
+          enabled: true,
+          message: "Prohibited from voting: user not verified. Refresh Again."
+        })
+        return
+      }
+
+    }
+
   }
 
 
@@ -114,6 +130,9 @@ const Candidates = () => {
           color={'warning'}
           duration={4000}
         />
+        {
+          isLoading ? <IonProgressBar type={'indeterminate'} color={'warning'} /> : null
+        }
 
         <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
           <IonRefresherContent></IonRefresherContent>
@@ -137,9 +156,9 @@ const Candidates = () => {
               />
             )) : (
               <div className='ion-text-center my-5'>
-              <IonIcon icon={cloudOfflineOutline} size='large'/>
-              <h4>Could Not Get Candidates</h4>
-              <p className=''> Check your connection and try again </p>
+                <IonIcon icon={cloudOfflineOutline} size='large' />
+                <h4>Could Not Get Candidates</h4>
+                <p className=''> Check your connection and try again </p>
               </div>
             )
           }

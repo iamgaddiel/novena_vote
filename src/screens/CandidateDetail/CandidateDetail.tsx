@@ -67,19 +67,28 @@ const CandidateDetail = () => {
             return
         }
 
-        const { response } = await getApiCollectionItem(CANDIDATES_COLLECTION, candidateId, user.token)
-        const candidateDetails = response as CandidateItem
-        setUser(user)
-        setCandidate(candidateDetails)
-        setIsLoading(false)
+        try {
+            const { response } = await getApiCollectionItem(CANDIDATES_COLLECTION, candidateId, user.token)
+            const candidateDetails = response as CandidateItem
+            setUser(user)
+            setCandidate(candidateDetails)
+            setIsLoading(false)
+        }
+        catch (error: any) {
+            setShowToast({
+                enabled: true,
+                message: "Error getting candidate's details: Check your network connection and try again!"
+            })
+            return
+        }
     }
 
 
     async function checkBiometricsAvailability() {
 
-        const result = await NativeBiometric.isAvailable();
+        const { isAvailable } = await NativeBiometric.isAvailable();
 
-        if (!result.isAvailable) {
+        if (isAvailable !== true) {
             setShowToast({
                 enabled: true,
                 message: "Unsupported device for biometrics scan"
@@ -93,19 +102,21 @@ const CandidateDetail = () => {
         const options = {
             reason: 'Initialize voting',
             title: 'Initialize voting',
-            subTitle: `You're voting for ${candidate.name}`,
-            description: 'Note by confirming, you approve of candidate',
+            subTitle: `You are about to vote for ${candidate.name}`,
+            description: 'Note by confirming, you approve of this candidate',
         }
 
         const isVerified = await NativeBiometric.verifyIdentity(options)
             .then(async () => {
 
+                const {token: userAuthToken, record: userRecord} = await getStoredUser()
+
                 // increment candidate vote
                 const { isUPdated, response: updateCandidateResponse } = await updateApiCollectionItem(
                     CANDIDATES_COLLECTION,
                     candidateId,
-                    { vote_count: candidate.vote_count++ },
-                    user?.token!
+                    { vote_count: ++candidate.vote_count },
+                    userAuthToken
                 )
 
                 if (!isUPdated) {
@@ -121,16 +132,20 @@ const CandidateDetail = () => {
                 // update user's has_voted, candidate_voted property
                 const { isUPdated: userDetailUpdate, response } = await updateApiCollectionItem(
                     USERS_COLLECTION,
-                    user?.record.id!,
+                    userRecord?.id,
                     {
                         has_voted: true,
                         candidate_voted: candidateId
                     },
-                    user?.token!
+                    userAuthToken
                 )
 
                 if (!userDetailUpdate) {
-                    console.log('Could not update')
+                    setShowToast({
+                        enabled: true,
+                        message: "Error: Could not updated user details",
+                        type: 'danger'
+                    })
                     return
                 }
 
@@ -142,14 +157,6 @@ const CandidateDetail = () => {
                 saveData(USER, newUserRecord)
                 setUser(newUserRecord)
 
-
-                setShowToast({
-                    enabled: true,
-                    message: "Failed to authenticated user",
-                    type: 'success'
-                })
-
-
             })
             .catch(() => {
                 setShowToast({
@@ -157,7 +164,6 @@ const CandidateDetail = () => {
                     message: "Failed to authenticated user"
                 })
             })
-
     }
 
     return (
@@ -198,19 +204,19 @@ const CandidateDetail = () => {
                         <section className="detail_decription mt-3 ion-padding">
                             <div className="d-flex align-items-center justify-content-between px-2">
                                 <div>
-                                    <IonSkeletonText animated style={{ width: '30px'}} />
-                                    <IonSkeletonText animated style={{ width: '190px'}} />
+                                    <IonSkeletonText animated style={{ width: '30px' }} />
+                                    <IonSkeletonText animated style={{ width: '190px' }} />
                                 </div>
-                                <IonSkeletonText animated style={{ width: '50px', height: '50px'}} className='rounded-circle' />
+                                <IonSkeletonText animated style={{ width: '50px', height: '50px' }} className='rounded-circle' />
                             </div>
 
                             <div className='mt-5'>
-                            <IonSkeletonText animated style={{ height: '40px', width: '70px'}} />
-                            <IonSkeletonText animated style={{ height: '40px', width: '100%'}} />
-                            <IonSkeletonText animated style={{ height: '40px', width: '90%'}} />
-                            <IonSkeletonText animated style={{ height: '40px', width: '70%'}} />
-                            <IonSkeletonText animated style={{ height: '40px', width: '80%'}} />
-                            <IonSkeletonText animated style={{ height: '40px', width: '95%'}} />
+                                <IonSkeletonText animated style={{ height: '40px', width: '70px' }} />
+                                <IonSkeletonText animated style={{ height: '40px', width: '100%' }} />
+                                <IonSkeletonText animated style={{ height: '40px', width: '90%' }} />
+                                <IonSkeletonText animated style={{ height: '40px', width: '70%' }} />
+                                <IonSkeletonText animated style={{ height: '40px', width: '80%' }} />
+                                <IonSkeletonText animated style={{ height: '40px', width: '95%' }} />
                             </div>
                         </section>
                     ) : (

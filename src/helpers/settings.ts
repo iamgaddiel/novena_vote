@@ -10,7 +10,7 @@ import PocketBase from 'pocketbase'
  */
 const appName = "EvotingApp"
 
-const DEBUG = true
+const DEBUG = false
 
 const LOCALHOST = "http://127.0.0.1:8090/api"
 
